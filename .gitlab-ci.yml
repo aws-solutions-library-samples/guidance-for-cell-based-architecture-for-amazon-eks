@@ -1,0 +1,22 @@
+stages:
+  - S3 Push
+
+before_script:
+  - apk add --no-cache aws-cli zip
+
+S3 Push:
+  stage: S3 Push
+  only:
+    - main
+  except:
+    changes:
+      - README.md
+      - .gitlab-ci.yml
+      - .gitignore
+  variables:
+    AWS_CREDS_TARGET_ROLE: ${Role}
+    AWS_DEFAULT_REGION: us-east-1
+  script:
+    - zip -r cba-eks-0603.zip . -x ".*" -x "README.md"
+    - aws s3 cp cba-eks-0603.zip s3://${SourceBucket}/guides/cba-eks-0603.zip
+
