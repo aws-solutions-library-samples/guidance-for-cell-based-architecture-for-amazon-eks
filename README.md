@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # EKS Cell-Based Architecture for High Availability
 
 ## Table of Contents
@@ -20,7 +19,6 @@
 - [Notices](#notices)
 - [Authors](#authors)
 
-
 ## Overview
 
 The EKS Cell-Based Architecture for High Availability is a resilient deployment pattern that distributes Amazon EKS workloads across multiple isolated "cells," with each cell confined to a single Availability Zone (AZ). This architecture enhances application availability by eliminating cross-AZ dependencies and providing isolation boundaries that prevent failures in one AZ from affecting others.
@@ -29,31 +27,31 @@ By deploying independent EKS clusters in each AZ and using intelligent traffic r
 
 ## Features and Benefits
 
-* **AZ Isolation**: Each EKS cluster (cell) is deployed in a dedicated Availability Zone, eliminating cross-AZ dependencies and preventing cascading failures.
+- **AZ Isolation**: Each EKS cluster (cell) is deployed in a dedicated Availability Zone, eliminating cross-AZ dependencies and preventing cascading failures.
 
-* **Independent Scaling**: Each cell can scale independently based on its specific load and requirements.
+- **Independent Scaling**: Each cell can scale independently based on its specific load and requirements.
 
-* **Intelligent Traffic Distribution**: Uses Route53 weighted routing to distribute traffic across cells, with automatic failover capabilities.
+- **Intelligent Traffic Distribution**: Uses Route53 weighted routing to distribute traffic across cells, with automatic failover capabilities.
 
-* **Reduced Blast Radius**: Failures in one cell don't impact others, limiting the scope of potential outages.
+- **Reduced Blast Radius**: Failures in one cell don't impact others, limiting the scope of potential outages.
 
-* **Optimized Latency**: Eliminates cross-AZ traffic for most operations, reducing latency and AWS data transfer costs.
+- **Optimized Latency**: Eliminates cross-AZ traffic for most operations, reducing latency and AWS data transfer costs.
 
-* **Improved Deployment Safety**: Enables progressive rollouts across cells, reducing the risk of widespread deployment failures.
+- **Improved Deployment Safety**: Enables progressive rollouts across cells, reducing the risk of widespread deployment failures.
 
-* **Cost Optimization**: Reduces cross-AZ data transfer costs by keeping traffic within AZs whenever possible.
+- **Cost Optimization**: Reduces cross-AZ data transfer costs by keeping traffic within AZs whenever possible.
 
-* **Consistent Infrastructure**: Uses Terraform to ensure consistent configuration across all cells.
+- **Consistent Infrastructure**: Uses Terraform to ensure consistent configuration across all cells.
 
 ## Use cases
 
-* **Mission-Critical Applications**: For applications that require extremely high availability and cannot tolerate even brief outages.
+- **Mission-Critical Applications**: For applications that require extremely high availability and cannot tolerate even brief outages.
 
-* **Microservice Architectures**: Complex microservice deployments that benefit from clear isolation boundaries.
+- **Microservice Architectures**: Complex microservice deployments that benefit from clear isolation boundaries.
 
-* **High-Traffic Applications**: Consumer-facing applications that need to handle large traffic volumes with consistent performance and increased resilience.
+- **High-Traffic Applications**: Consumer-facing applications that need to handle large traffic volumes with consistent performance and increased resilience.
 
-* **Disaster Recovery Solutions**: As part of a comprehensive disaster recovery strategy with multiple fallback options.
+- **Disaster Recovery Solutions**: As part of a comprehensive disaster recovery strategy with multiple fallback options.
 
 ## Architecture Overview
 
@@ -95,7 +93,6 @@ This architecture ensures that if any single Availability Zone fails, traffic au
 ## Architecture Diagram
 
 ![Figure 1: EKS Cellular Architecture](images/EKS-cell-architecture-v3.4.png)
-
 
 ## Architecture Steps
 
@@ -141,7 +138,6 @@ This architecture ensures that if any single Availability Zone fails, traffic au
    - Weighted routing policy is configured to distribute traffic across all three cells (33/33/34% split)
    - Health checks are associated with each ALB to enable automatic failover
    - DNS TTL values are optimized for quick failover response
-
 
 ## AWS Services and Components
 
@@ -272,7 +268,6 @@ The EKS Cell-Based Architecture provides high availability but requires careful 
   </tr>
 </table>
 
-
 #### Cost Optimization Considerations
 
 1. **Leverage Karpenter efficiently**: Configure appropriate provisioners to optimize instance selection
@@ -282,8 +277,6 @@ The EKS Cell-Based Architecture provides high availability but requires careful 
 5. **Consider Savings Plans or Reserved Instances**: For baseline capacity if workloads are stable
 
 This architecture prioritizes high availability over cost optimization. Use the [**AWS Pricing Calculator**](https://calculator.aws) to estimate costs for your specific deployment.
-
-
 
 ## Security
 
@@ -313,8 +306,8 @@ The EKS Cell-Based Architecture implements multiple layers of security to protec
 - **Health Checks**: Liveness probes detect and restart unhealthy containers
 - **Image Security**: Stores container images in a secure, encrypted repository. It includes vulnerability scanning to identify security issues in your container images.
 
-
 #### Additional Security Considerations
+
 - Regularly update and patch EKS clusters, worker nodes, and container images.
 - Implement network policies to control pod-to-pod communication within the cluster.
 - Use Pod Security Policies or Pod Security Standards to enforce security best practices for pods.
@@ -322,6 +315,7 @@ The EKS Cell-Based Architecture implements multiple layers of security to protec
 - Regularly review and rotate IAM and Kubernetes RBAC permissions.
 
 ## Supported AWS Regions
+
 The core components of the Guidance for EKS Cell based Architecture are available in all AWS Regions where Amazon EKS is supported.
 
 ## Quotas
@@ -403,6 +397,7 @@ terraform apply -target="module.eks_cell3" -auto-approve
 ```
 
 **Verification**: Confirm EKS clusters are created
+
 ```bash
 aws eks list-clusters
 ```
@@ -426,6 +421,7 @@ source restart-lb-controller.sh
 ```
 
 **Verification**: Verify AWS Load Balancer Controller pods
+
 ```bash
 for CELL in $CELL_1 $CELL_2 $CELL_3; do
   echo "Checking AWS Load Balancer Controller pods in $CELL..."
@@ -450,6 +446,7 @@ aws elbv2 describe-load-balancers --query 'LoadBalancers[*].[LoadBalancerName,DN
 ```
 
 **Verification**: Check ingress resources
+
 ```bash
 kubectl get ingress -n default --context $CELL_1
 kubectl get ingress -n default --context $CELL_2
@@ -468,6 +465,7 @@ terraform apply -target="aws_route53_record.main" -target="aws_route53_record.ma
 ```
 
 **Verification**: Verify Route53 records
+
 ```bash
 aws route53 list-resource-record-sets --hosted-zone-id $TF_VAR_route53_zone_id --query "ResourceRecordSets[?contains(Name,'$TF_VAR_domain_name')]"
 ```
@@ -482,6 +480,7 @@ source setup-env.sh
 ```
 
 This will automatically:
+
 1. Set the cluster names (CELL_1, CELL_2, CELL_3)
 2. Set the AWS region
 3. Get your AWS account number
@@ -620,214 +619,3 @@ Customers are responsible for making their own independent assessment of the inf
 - Raj Bagwe, Senior Solutions Architect,AWS
 - Ashok Srirama, Specialist Principal Solutions Architect, AWS
 - Daniel Zilberman, Senior Solutions Architect,AWS Tech Solutions
-=======
-# Guidance for a Cell-Based Architecture for Amazon EKS on AWS
-
-The Guidance title should be consistent with the title established first in Alchemy.
-
-**Example:** *Guidance for Product Substitutions on AWS*
-
-This title correlates exactly to the Guidance it’s linked to, including its corresponding sample code repository. 
-
-
-## Table of Contents
-
-List the top-level sections of the README template, along with a hyperlink to the specific section.
-
-### Required
-
-1. [Overview](#overview)
-    - [Cost](#cost)
-2. [Prerequisites](#prerequisites)
-    - [Operating System](#operating-system)
-3. [Deployment Steps](#deployment-steps)
-4. [Deployment Validation](#deployment-validation)
-5. [Running the Guidance](#running-the-guidance)
-6. [Next Steps](#next-steps)
-7. [Cleanup](#cleanup)
-
-***Optional***
-
-8. [FAQ, known issues, additional considerations, and limitations](#faq-known-issues-additional-considerations-and-limitations-optional)
-9. [Revisions](#revisions-optional)
-10. [Notices](#notices)
-11. [Authors](#authors)
-
-## Overview
-
-1. Provide a brief overview explaining the what, why, or how of your Guidance. You can answer any one of the following to help you write this:
-
-    - **Why did you build this Guidance?**
-    - **What problem does this Guidance solve?**
-
-2. Include the architecture diagram image, as well as the steps explaining the high-level overview and flow of the architecture. 
-    - To add a screenshot, create an ‘assets/images’ folder in your repository and upload your screenshot to it. Then, using the relative file path, add it to your README. 
-
-### Cost
-
-This section is for a high-level cost estimate. Think of a likely straightforward scenario with reasonable assumptions based on the problem the Guidance is trying to solve. Provide an in-depth cost breakdown table in this section below ( you should use AWS Pricing Calculator to generate cost breakdown ).
-
-Start this section with the following boilerplate text:
-
-_You are responsible for the cost of the AWS services used while running this Guidance. As of <month> <year>, the cost for running this Guidance with the default settings in the <Default AWS Region (Most likely will be US East (N. Virginia)) > is approximately $<n.nn> per month for processing ( <nnnnn> records )._
-
-Replace this amount with the approximate cost for running your Guidance in the default Region. This estimate should be per month and for processing/serving resonable number of requests/entities.
-
-Suggest you keep this boilerplate text:
-_We recommend creating a [Budget](https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html) through [AWS Cost Explorer](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/) to help manage costs. Prices are subject to change. For full details, refer to the pricing webpage for each AWS service used in this Guidance._
-
-### Sample Cost Table
-
-**Note : Once you have created a sample cost table using AWS Pricing Calculator, copy the cost breakdown to below table and upload a PDF of the cost estimation on BuilderSpace. Do not add the link to the pricing calculator in the ReadMe.**
-
-The following table provides a sample cost breakdown for deploying this Guidance with the default parameters in the US East (N. Virginia) Region for one month.
-
-| AWS service  | Dimensions | Cost [USD] |
-| ----------- | ------------ | ------------ |
-| Amazon API Gateway | 1,000,000 REST API calls per month  | $ 3.50month |
-| Amazon Cognito | 1,000 active users per month without advanced security feature | $ 0.00 |
-
-## Prerequisites
-
-### Operating System
-
-- Talk about the base Operating System (OS) and environment that can be used to run or deploy this Guidance, such as *Mac, Linux, or Windows*. Include all installable packages or modules required for the deployment. 
-- By default, assume Amazon Linux 2/Amazon Linux 2023 AMI as the base environment. All packages that are not available by default in AMI must be listed out.  Include the specific version number of the package or module.
-
-**Example:**
-“These deployment instructions are optimized to best work on **<Amazon Linux 2 AMI>**.  Deployment in another OS may require additional steps.”
-
-- Include install commands for packages, if applicable.
-
-
-### Third-party tools (If applicable)
-
-*List any installable third-party tools required for deployment.*
-
-
-### AWS account requirements (If applicable)
-
-*List out pre-requisites required on the AWS account if applicable, this includes enabling AWS regions, requiring ACM certificate.*
-
-**Example:** “This deployment requires you have public ACM certificate available in your AWS account”
-
-**Example resources:**
-- ACM certificate 
-- DNS record
-- S3 bucket
-- VPC
-- IAM role with specific permissions
-- Enabling a Region or service etc.
-
-
-### aws cdk bootstrap (if sample code has aws-cdk)
-
-<If using aws-cdk, include steps for account bootstrap for new cdk users.>
-
-**Example blurb:** “This Guidance uses aws-cdk. If you are using aws-cdk for first time, please perform the below bootstrapping....”
-
-### Service limits  (if applicable)
-
-<Talk about any critical service limits that affect the regular functioning of the Guidance. If the Guidance requires service limit increase, include the service name, limit name and link to the service quotas page.>
-
-### Supported Regions (if applicable)
-
-<If the Guidance is built for specific AWS Regions, or if the services used in the Guidance do not support all Regions, please specify the Region this Guidance is best suited for>
-
-
-## Deployment Steps
-
-Deployment steps must be numbered, comprehensive, and usable to customers at any level of AWS expertise. The steps must include the precise commands to run, and describe the action it performs.
-
-* All steps must be numbered.
-* If the step requires manual actions from the AWS console, include a screenshot if possible.
-* The steps must start with the following command to clone the repo. ```git clone xxxxxxx```
-* If applicable, provide instructions to create the Python virtual environment, and installing the packages using ```requirement.txt```.
-* If applicable, provide instructions to capture the deployed resource ARN or ID using the CLI command (recommended), or console action.
-
- 
-**Example:**
-
-1. Clone the repo using command ```git clone xxxxxxxxxx```
-2. cd to the repo folder ```cd <repo-name>```
-3. Install packages in requirements using command ```pip install requirement.txt```
-4. Edit content of **file-name** and replace **s3-bucket** with the bucket name in your account.
-5. Run this command to deploy the stack ```cdk deploy``` 
-6. Capture the domain name created by running this CLI command ```aws apigateway ............```
-
-
-
-## Deployment Validation
-
-<Provide steps to validate a successful deployment, such as terminal output, verifying that the resource is created, status of the CloudFormation template, etc.>
-
-**Examples:**
-
-* Open CloudFormation console and verify the status of the template with the name starting with xxxxxx.
-* If deployment is successful, you should see an active database instance with the name starting with <xxxxx> in        the RDS console.
-*  Run the following CLI command to validate the deployment: ```aws cloudformation describe xxxxxxxxxxxxx```
-
-## Running the Guidance
-
-<Provide instructions to run the Guidance with the sample data or input provided, and interpret the output received.> 
-
-This section should include:
-
-* Guidance inputs
-* Commands to run
-* Expected output (provide screenshot if possible)
-* Output description
-
-
-
-## Next Steps
-
-Provide suggestions and recommendations about how customers can modify the parameters and the components of the Guidance to further enhance it according to their requirements.
-
-## Cleanup
-
-- Include detailed instructions, commands, and console actions to delete the deployed Guidance.
-- If the Guidance requires manual deletion of resources, such as the content of an S3 bucket, please specify.
-
-## FAQ, known issues, additional considerations, and limitations (optional)
-
-
-**Known issues (optional)**
-
-<If there are common known issues, or errors that can occur during the Guidance deployment, describe the issue and resolution steps here>
-
-
-**Additional considerations (if applicable)**
-
-<Include considerations the customer must know while using the Guidance, such as anti-patterns, or billing considerations.>
-
-**Examples:**
-
-- “This Guidance creates a public AWS bucket required for the use-case.”
-- “This Guidance created an Amazon SageMaker notebook that is billed per hour irrespective of usage.”
-- “This Guidance creates unauthenticated public API endpoints.”
-
-
-Provide a link to the *GitHub issues page* for users to provide feedback.
-
-
-**Example:** *“For any feedback, questions, or suggestions, please use the issues tab under this repo.”*
-
-## Revisions (optional)
-
-Document all notable changes to this project.
-
-Consider formatting this section based on Keep a Changelog, and adhering to Semantic Versioning.
-
-## Notices
-
-
-*Customers are responsible for making their own independent assessment of the information in this Guidance. This Guidance: (a) is for informational purposes only, (b) represents AWS current product offerings and practices, which are subject to change without notice, and (c) does not create any commitments or assurances from AWS and its affiliates, suppliers or licensors. AWS products or services are provided “as is” without warranties, representations, or conditions of any kind, whether express or implied. AWS responsibilities and liabilities to its customers are controlled by AWS agreements, and this Guidance is not part of, nor does it modify, any agreement between AWS and its customers.*
-
-
-## Authors
-
-Ashok Srirama, Specialist Principal Solutions Architect, AWS <br/>
-Raj Bagwe, Senior Solutions Architect, AWS <br/>
-Daniel Zilberman, Senior Solutions Architect, AWS Tech Solutions 
->>>>>>> origin/main
