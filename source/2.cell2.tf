@@ -13,7 +13,7 @@ provider "kubernetes" {
 
 provider "helm" {
   alias = "helm-cell2"
-  kubernetes {
+  kubernetes = {
     host                   = module.eks_cell2.cluster_endpoint
     cluster_ca_certificate = base64decode(module.eks_cell2.cluster_certificate_authority_data)
 
