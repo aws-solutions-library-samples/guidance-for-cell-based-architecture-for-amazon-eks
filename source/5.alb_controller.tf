@@ -104,7 +104,7 @@ resource "aws_iam_role_policy_attachment" "lb_controller_policy_attachment_cell3
 resource "aws_iam_policy" "lb_controller" {
   name        = "${local.name}-lb-controller"
   description = "IAM policy for AWS Load Balancer Controller"
-  policy      = file("${path.module}/policies/lb-controller-policy.json")
+  policy      = file("${path.root}/policies/lb-controller-policy.json")
 }
 
 # Update EKS Blueprints Addons to include AWS Load Balancer Controller
