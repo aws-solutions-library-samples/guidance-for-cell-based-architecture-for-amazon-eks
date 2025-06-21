@@ -5,7 +5,8 @@ provider "aws" {
 data "aws_availability_zones" "available" {}
 
 locals {
-  name   = basename(path.cwd)
+#  name   = basename(path.cwd)
+  name   = "eks-cell"
   region = "us-west-2"
 
   vpc_cidr = "10.0.0.0/16"

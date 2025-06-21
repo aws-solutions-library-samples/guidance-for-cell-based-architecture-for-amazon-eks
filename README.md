@@ -280,7 +280,7 @@ This architecture prioritizes high availability over cost optimization. Use the 
 
 ## Security
 
-When you build systems on AWS infrastructure, security responsibilities are shared between you and AWS. This [**shared responsibility model**](https://aws.amazon.com/compliance/shared-responsibility-model/) reduces your operational burden because AWS operates, manages, and controls the components including the host operating system, the virtualization layer, and the physical security of the facilities in which the services operate. For more information about AWS security, visit [**AWS Cloud Security**](http://aws.amazon.com/security/).
+When you build systems on AWS infrastructure, security responsibilities are shared between you and AWS. This [**shared responsibility model**](https://aws.amazon.com/compliance/shared-responsibility-model/) reduces your operational burden because AWS operates, manages, and controls the components including the control plane host operating system, the virtualization layer, and the physical security of the facilities in which the services operate. For more information about AWS security, visit [**AWS Cloud Security**](http://aws.amazon.com/security/).
 
 The EKS Cell-Based Architecture implements multiple layers of security to protect your applications and infrastructure. Here are the key security components and considerations:
 
@@ -341,7 +341,7 @@ For specific implementation quotas, consider the following key components and se
 | Service | Resource | Default Quota | Architecture Usage |
 |---------|----------|--------------|-------------------|
 | Amazon EKS | Clusters per Region | 100 | 3 clusters per deployment |
-| Amazon EKS | Nodes per Cluster | 450 | Varies based on workload |
+| Amazon EKS | Nodes per Managed Node Group | 450 | Varies based on workload |
 | Amazon EC2 | On-Demand Instances | Varies by type | At least 2 instances per cell |
 | Elastic Load Balancing | Application Load Balancers | 50 per Region | 3 ALBs per deployment |
 | Amazon VPC | VPCs per Region | 5 | 1 VPC per deployment |
@@ -364,13 +364,13 @@ Before deploying this solution, you need:
 
 #### Phase 1: Set Required Variables
 
-Create a `terraform.tfvars` file or set the following variables when running Terraform:
+Create a `terraform.tfvars` file to set the following variables when running Terraform:
 
 ```bash
 # Required variables
-TF_VAR_route53_zone_id     = "YOUR_ROUTE53_ZONE_ID"
-TF_VAR_acm_certificate_arn = "YOUR_ACM_CERTIFICATE_ARN"
-TF_VAR_domain_name         = "example.com"  # Your domain name
+route53_zone_id = "YOUR_ROUTE53_ZONE_ID" # Your route53 zone id
+acm_certificate_arn = "YOUR_ACM_CERTIFICATE_ARN" # You ACM certificate ARN
+domain_name = "example.com"  # Your domain name
 ```
 
 #### Phase 2: VPC Deployment (~ 5 minutes)
@@ -420,6 +420,12 @@ source setup-env.sh
 source restart-lb-controller.sh
 ```
 
+**Note:** EKS Addons deployment command pulls images from Amazon ECR Public repository. Amazon ECR Public repository requires authentication when accessing manifests via the Docker Registry HTTP API. If you get "The 401 Unauthorized response" for installing addons, it indicates missing or invalid credentials for accessing Amazon ECR Public repository. To resolve this error generate authentication token use following command,  
+
+```bash
+aws ecr-public get-login-password —region us-east-1 | docker login —username AWS —password-stdin public.ecr.aws
+```
+
 **Verification**: Verify AWS Load Balancer Controller pods
 
 ```bash
@@ -448,9 +454,17 @@ aws elbv2 describe-load-balancers --query 'LoadBalancers[*].[LoadBalancerName,DN
 **Verification**: Check ingress resources
 
 ```bash
-kubectl get ingress -n default --context $CELL_1
-kubectl get ingress -n default --context $CELL_2
-kubectl get ingress -n default --context $CELL_3
+# Checking Ingress resources in all Cells
+for CELL in $CELL_1 $CELL_2 $CELL_3; do
+  echo "Checking ingress resources in $CELL..."
+  kubectl get ingress -n default --context $CELL
+done
+
+# Checking PODs in all Cells
+for CELL in $CELL_1 $CELL_2 $CELL_3; do
+  echo "Checking application pods in $CELL..."
+  kubectl get pods -n default --context $CELL
+done
 ```
 
 #### Phase 6: Route53 Configuration (~ 2 minutes)
@@ -467,7 +481,7 @@ terraform apply -target="aws_route53_record.main" -target="aws_route53_record.ma
 **Verification**: Verify Route53 records
 
 ```bash
-aws route53 list-resource-record-sets --hosted-zone-id $TF_VAR_route53_zone_id --query "ResourceRecordSets[?contains(Name,'$TF_VAR_domain_name')]"
+aws route53 list-resource-record-sets --hosted-zone-id $(terraform output -raw route53_zone_id) --query "ResourceRecordSets[?contains(Name,'$(terraform output -raw domain_name)')]"
 ```
 
 #### Environment Setup
@@ -527,7 +541,7 @@ done
 aws elbv2 describe-load-balancers --query 'LoadBalancers[*].[LoadBalancerName,DNSName]' --output table
 ```
 
-## Destroy
+## Cleanup
 
 To teardown and remove the resources created in the pattern, follow these steps:
 
