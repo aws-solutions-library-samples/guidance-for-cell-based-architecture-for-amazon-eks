@@ -520,13 +520,15 @@ source setup-env.sh
 
 2. Verify the existing nodes are deployed to their respective AZs
 
+**Note**: kgn is command alias to `kubernetes get nodes`
+
 ```bash
 kgn --context ${CELL_1}
 kgn --context ${CELL_2}
 kgn --context ${CELL_3}
 ```
 
-3. Verify that the AWS Load Balancer Controller is running in each cluster:
+1. Verify that the AWS Load Balancer Controller is running in each cluster:
 
 ```bash
 for CELL in $CELL_1 $CELL_2 $CELL_3; do
