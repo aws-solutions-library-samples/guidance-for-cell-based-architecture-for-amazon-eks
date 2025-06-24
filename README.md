@@ -92,7 +92,7 @@ This architecture ensures that if any single Availability Zone fails, traffic au
 
 ## Architecture Diagram
 
-![Figure 1: EKS Cellular Architecture](images/EKS-cell-architecture-v3.4.png)
+![Figure 1: EKS Cellular Architecture](images/EKS-cell-architecture-v3.6.png)
 
 ## Architecture Steps
 
@@ -140,133 +140,55 @@ This architecture ensures that if any single Availability Zone fails, traffic au
    - DNS TTL values are optimized for quick failover response
 
 ## AWS Services and Components
+| AWS Service | Role | Description |
+|-------------|------|-------------|
+| Amazon VPC | Network Foundation | Provides isolated network infrastructure with public and private subnets across three AZs, enabling secure communication between components |
+| Amazon EKS | Container Orchestration | Manages three independent Kubernetes clusters (one per AZ), each serving as an isolated "cell" for application workloads |
+| EC2 Managed Node Groups | Initial Compute Capacity | Provides the baseline compute capacity for each cell, hosting critical system pods (CoreDNS, AWS Load Balancer Controller) and initial application workloads; configured with m5.large instances in specific AZs |
+| Karpenter | Dynamic Auto-scaling | Automatically provisions additional nodes based on workload demands, handling application scaling beyond the capacity of managed node groups; optimized for efficient resource utilization |
+| AWS Load Balancer Controller | Traffic Management | Creates and manages Application Load Balancers based on Kubernetes Ingress resources in each cell; runs on managed node group instances |
+| Application Load Balancer (ALB) | Load Distribution | Distributes incoming application traffic to Kubernetes services within each cell, with TLS termination and health checks |
+| Amazon Route53 | DNS Management | Implements weighted routing (33/33/34%) across cells and provides direct access to individual cells via DNS; enables automatic failover during AZ outages |
+| AWS Certificate Manager (ACM) | TLS Certificate Management | Provides and manages TLS certificates for secure HTTPS connections to applications via ALBs |
+| AWS IAM | Access Control | Manages permissions for EKS clusters, add-ons, and service accounts using least-privilege principles |
+| Amazon ECR | Container Registry | Stores container images used by applications and add-ons |
+| AWS CloudWatch | Monitoring | Collects metrics, logs, and events from EKS clusters and related AWS resources |
+| NAT Gateway | Outbound Connectivity | Enables private subnet resources to access the internet for updates and external services |
+| Security Groups | Network Security | Controls inbound and outbound traffic to EKS nodes and other resources |
+| EKS Add-ons | Cluster Extensions | Provides essential functionality including: CoreDNS for service discovery (runs on managed node groups), VPC CNI for pod networking (runs on all nodes), Kube-proxy for network routing (runs on all nodes) |
+| Terraform | Infrastructure as Code | Automates the provisioning and configuration of all AWS resources in a repeatable manner |
 
-<table style="border-collapse: collapse; width: 100%; border: 1px solid #ddd;">
-  <tr style="background-color: #f2f2f2; border: 1px solid #ddd;">
-    <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">AWS Service</th>
-    <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Role</th>
-    <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Description</th>
-  </tr>
-  <tr style="background-color: white; border: 1px solid #ddd;">
-    <td style="padding: 8px; border: 1px solid #ddd;">Amazon VPC</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">Network Foundation</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">Provides isolated network infrastructure with public and private subnets across three AZs, enabling secure communication between components</td>
-  </tr>
-  <tr style="background-color: #f2f2f2; border: 1px solid #ddd;">
-    <td style="padding: 8px; border: 1px solid #ddd;">Amazon EKS</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">Container Orchestration</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">Manages three independent Kubernetes clusters (one per AZ), each serving as an isolated "cell" for application workloads</td>
-  </tr>
-  <tr style="background-color: white; border: 1px solid #ddd;">
-    <td style="padding: 8px; border: 1px solid #ddd;">EC2 Managed Node Groups</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">Initial Compute Capacity</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">Provides the baseline compute capacity for each cell, hosting critical system pods (CoreDNS, AWS Load Balancer Controller) and initial application workloads; configured with m5.large instances in specific AZs</td>
-  </tr>
-  <tr style="background-color: #f2f2f2; border: 1px solid #ddd;">
-    <td style="padding: 8px; border: 1px solid #ddd;">Karpenter</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">Dynamic Auto-scaling</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">Automatically provisions additional nodes based on workload demands, handling application scaling beyond the capacity of managed node groups; optimized for efficient resource utilization</td>
-  </tr>
-  <tr style="background-color: white; border: 1px solid #ddd;">
-    <td style="padding: 8px; border: 1px solid #ddd;">AWS Load Balancer Controller</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">Traffic Management</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">Creates and manages Application Load Balancers based on Kubernetes Ingress resources in each cell; runs on managed node group instances</td>
-  </tr>
-  <tr style="background-color: #f2f2f2; border: 1px solid #ddd;">
-    <td style="padding: 8px; border: 1px solid #ddd;">Application Load Balancer (ALB)</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">Load Distribution</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">Distributes incoming application traffic to Kubernetes services within each cell, with TLS termination and health checks</td>
-  </tr>
-  <tr style="background-color: white; border: 1px solid #ddd;">
-    <td style="padding: 8px; border: 1px solid #ddd;">Amazon Route53</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">DNS Management</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">Implements weighted routing (33/33/34%) across cells and provides direct access to individual cells via DNS; enables automatic failover during AZ outages</td>
-  </tr>
-  <tr style="background-color: #f2f2f2; border: 1px solid #ddd;">
-    <td style="padding: 8px; border: 1px solid #ddd;">AWS Certificate Manager (ACM)</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">TLS Certificate Management</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">Provides and manages TLS certificates for secure HTTPS connections to applications via ALBs</td>
-  </tr>
-  <tr style="background-color: white; border: 1px solid #ddd;">
-    <td style="padding: 8px; border: 1px solid #ddd;">AWS IAM</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">Access Control</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">Manages permissions for EKS clusters, add-ons, and service accounts using least-privilege principles</td>
-  </tr>
-  <tr style="background-color: #f2f2f2; border: 1px solid #ddd;">
-    <td style="padding: 8px; border: 1px solid #ddd;">Amazon ECR</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">Container Registry</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">Stores container images used by applications and add-ons</td>
-  </tr>
-  <tr style="background-color: white; border: 1px solid #ddd;">
-    <td style="padding: 8px; border: 1px solid #ddd;">AWS CloudWatch</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">Monitoring</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">Collects metrics, logs, and events from EKS clusters and related AWS resources</td>
-  </tr>
-  <tr style="background-color: #f2f2f2; border: 1px solid #ddd;">
-    <td style="padding: 8px; border: 1px solid #ddd;">NAT Gateway</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">Outbound Connectivity</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">Enables private subnet resources to access the internet for updates and external services</td>
-  </tr>
-  <tr style="background-color: white; border: 1px solid #ddd;">
-    <td style="padding: 8px; border: 1px solid #ddd;">Security Groups</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">Network Security</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">Controls inbound and outbound traffic to EKS nodes and other resources</td>
-  </tr>
-  <tr style="background-color: #f2f2f2; border: 1px solid #ddd;">
-    <td style="padding: 8px; border: 1px solid #ddd;">EKS Add-ons</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">Cluster Extensions</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">Provides essential functionality including: <br>- CoreDNS for service discovery (runs on managed node groups)<br>- VPC CNI for pod networking (runs on all nodes)<br>- Kube-proxy for network routing (runs on all nodes)</td>
-  </tr>
-  <tr style="background-color: white; border: 1px solid #ddd;">
-    <td style="padding: 8px; border: 1px solid #ddd;">Terraform</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">Infrastructure as Code</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">Automates the provisioning and configuration of all AWS resources in a repeatable manner</td>
-  </tr>
-</table>
+    
 
 ## Cost
 
 The EKS Cell-Based Architecture provides high availability but requires careful cost management due to its multi-cluster design. Below are key cost factors and optimization strategies:
 
-<h4>Primary Cost Components</h4>
+**Primary Cost Components**
 
-<table style="border-collapse: collapse; width: 100%; border: 1px solid #ddd;">
-  <tr style="background-color: #f2f2f2; border: 1px solid #ddd;">
-    <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Component</th>
-    <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Cost Factors</th>
-    <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Optimization Strategies</th>
-  </tr>
-  <tr style="background-color: white; border: 1px solid #ddd;">
-    <td style="padding: 8px; border: 1px solid #ddd;">EKS Clusters</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">$0.10 per hour per cluster (3 clusters = ~$220/month)</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">Consider consolidating to fewer clusters for non-production environments</td>
-  </tr>
-  <tr style="background-color: #f2f2f2; border: 1px solid #ddd;">
-    <td style="padding: 8px; border: 1px solid #ddd;">EC2 Instances</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">m5.large instances (~$70/month each) across 3 cells</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">Use Karpenter for efficient auto-scaling; consider Spot Instances for further cost optimization</td>
-  </tr>
-  <tr style="background-color: white; border: 1px solid #ddd;">
-    <td style="padding: 8px; border: 1px solid #ddd;">Application Load Balancers</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">$0.0225/hour per ALB (3 ALBs = ~$50/month) + data processing</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">Consolidate services behind ALBs where possible</td>
-  </tr>
-  <tr style="background-color: #f2f2f2; border: 1px solid #ddd;">
-    <td style="padding: 8px; border: 1px solid #ddd;">NAT Gateway</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">$0.045/hour + data processing (~$32/month)</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">Using single NAT Gateway (as configured) reduces costs but creates a single point of failure</td>
-  </tr>
-  <tr style="background-color: white; border: 1px solid #ddd;">
-    <td style="padding: 8px; border: 1px solid #ddd;">Route53</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">$0.50/hosted zone/month + query charges</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">Minimal cost impact</td>
-  </tr>
-  <tr style="background-color: #f2f2f2; border: 1px solid #ddd;">
-    <td style="padding: 8px; border: 1px solid #ddd;">Data Transfer</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">Cross-AZ traffic ($0.01/GB)</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">Cell-based architecture minimizes cross-AZ traffic, reducing this cost</td>
-  </tr>
-</table>
+| AWS Service | Dimensions | Cost per Month (USD) |
+|-------------|------------|---------------------|
+| EKS Clusters | $0.10/hour × 3 clusters × 720 hours | $216.00 |
+| EC2 Instances | 6 × m5.large instances × 720 hours × $0.096/hour | $414.72 |
+| Application Load Balancers | $0.0225/hour × 3 ALBs × 720 hours | $48.60 |
+| ALB Data Processing | $0.008/LCU-hour (variable based on traffic) | $10-50+ |
+| NAT Gateway - Hourly | $0.045/hour × 720 hours | $32.40 |
+| NAT Gateway - Data Processing | $0.045/GB processed (variable) | $20-100+ |
+| Route53 - Hosted Zone | $0.50/hosted zone | $0.50 |
+| Route53 - DNS Queries | $0.40/million queries after first 1B | $1-5 |
+| EBS Storage | gp3 volumes for EKS nodes (~20GB per node) | $9.60 |
+| CloudWatch Logs | $0.50/GB ingested + $0.03/GB stored | $5-20 |
+| CloudWatch Metrics | Custom metrics beyond free tier | $2-10 |
+
+**Cost Summary**
+
+| Cost Type | Monthly Range (USD) |
+|-----------|-------------------|
+| Fixed Costs | $721.82 |
+| Variable Costs | $63.50 - $315+ |
+| **Total Estimated Range** | $785 - $1,037+ |
+
+
 
 #### Cost Optimization Considerations
 
