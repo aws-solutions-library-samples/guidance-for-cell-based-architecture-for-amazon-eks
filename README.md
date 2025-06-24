@@ -2,22 +2,30 @@
 
 ## Table of Contents
 
-- [Overview](#overview)
-- [Features and Benefits](#features-and-benefits)
-- [Use Cases](#use-cases)
-- [Architecture Overview](#architecture-overview)
+- [EKS Cell-Based Architecture for High Availability](#eks-cell-based-architecture-for-high-availability)
+  - [Table of Contents](#table-of-contents)
+  - [Overview](#overview)
+  - [Features and Benefits](#features-and-benefits)
+  - [Use cases](#use-cases)
+  - [Architecture Overview](#architecture-overview)
   - [Architecture Diagram](#architecture-diagram)
   - [Architecture Steps](#architecture-steps)
-- [AWS Services and Components](#aws-services-and-components)
-- [Cost](#cost)
-- [Security](#security)
-- [Supported AWS Regions](#supported-aws-regions)
-- [Quotas](#quotas)
-- [Deployment Steps](#deployment-steps)
-- [Validation](#validation)
-- [Troubleshooting](#troubleshooting)
-- [Notices](#notices)
-- [Authors](#authors)
+  - [AWS Services and Components](#aws-services-and-components)
+  - [Cost](#cost)
+      - [Cost Optimization Considerations](#cost-optimization-considerations)
+  - [Security](#security)
+      - [Network Security](#network-security)
+      - [Access Control](#access-control)
+      - [Kubernetes Security](#kubernetes-security)
+      - [Additional Security Considerations](#additional-security-considerations)
+  - [Supported AWS Regions](#supported-aws-regions)
+  - [Quotas](#quotas)
+      - [Quotas for AWS services in this Guidance](#quotas-for-aws-services-in-this-guidance)
+      - [Key Quota Considerations for Cell-Based Architecture](#key-quota-considerations-for-cell-based-architecture)
+  - [Deployment Steps](#deployment-steps)
+  - [Notices](#notices)
+  - [Authors](#authors)
+  - [Acknowledgements](#acknowledgements)
 
 ## Overview
 
@@ -274,279 +282,7 @@ To request a quota increase, use the [**Service Quotas console**](https://consol
 
 ## Deployment Steps
 
-#### Prerequisites
-
-Before deploying this solution, you need:
-
-1. **AWS CLI** configured with appropriate permissions
-2. **Terraform** installed (version 1.0 or later)
-3. **kubectl** installed
-4. **An existing Route53 hosted zone** - You'll need the zone ID
-5. **An existing ACM certificate** - You'll need the certificate ARN that covers your domain and subdomains
-
-#### Phase 1: Set Required Variables
-
-Create a `terraform.tfvars` file to set the following variables when running Terraform:
-
-```bash
-# Required variables
-route53_zone_id = "YOUR_ROUTE53_ZONE_ID" # Your route53 zone id
-acm_certificate_arn = "YOUR_ACM_CERTIFICATE_ARN" # You ACM certificate ARN
-domain_name = "example.com"  # Your domain name
-```
-
-#### Phase 2: VPC Deployment (~ 5 minutes)
-
-First, we'll deploy the VPC infrastructure:
-
-```bash
-# Initialize Terraform
-terraform init
-
-# Deploy VPC
-terraform apply -target="module.vpc" -auto-approve
-```
-
-#### Phase 3: EKS Cluster Deployment (~ 15 minutes)
-
-Next, we'll deploy the EKS clusters across three cells:
-
-```bash
-# Deploy EKS clusters
-terraform apply -target="module.eks_cell1" -auto-approve
-terraform apply -target="module.eks_cell2" -auto-approve
-terraform apply -target="module.eks_cell3" -auto-approve
-```
-
-**Verification**: Confirm EKS clusters are created
-
-```bash
-aws eks list-clusters
-```
-
-#### Phase 4: Load Balancer Controller Setup (~ 5 minutes)
-
-Now we'll deploy the AWS Load Balancer Controller to manage traffic routing.
-
-```bash
-# Deploy AWS Load Balancer Controller IAM policy and roles
-terraform apply -target="aws_iam_policy.lb_controller" -auto-approve
-terraform apply -target="aws_iam_role.lb_controller_role_cell1" -target="aws_iam_role.lb_controller_role_cell2" -target="aws_iam_role.lb_controller_role_cell3" -auto-approve
-terraform apply -target="aws_iam_role_policy_attachment.lb_controller_policy_attachment_cell1" -target="aws_iam_role_policy_attachment.lb_controller_policy_attachment_cell2" -target="aws_iam_role_policy_attachment.lb_controller_policy_attachment_cell3" -auto-approve
-
-# Deploy EKS addons including AWS Load Balancer Controller
-terraform apply -target="module.eks_blueprints_addons_cell1" -target="module.eks_blueprints_addons_cell2" -target="module.eks_blueprints_addons_cell3" -auto-approve
-
-# Set up environment variables and restart AWS Load Balancer Controller pods
-source setup-env.sh
-source restart-lb-controller.sh
-```
-
-**Note:** EKS Addons deployment command pulls images from Amazon ECR Public repository. Amazon ECR Public repository requires authentication when accessing manifests via the Docker Registry HTTP API. If you get "The 401 Unauthorized response" for installing addons, it indicates missing or invalid credentials for accessing Amazon ECR Public repository. To resolve this error generate authentication token use following command,  
-
-```bash
-aws ecr-public get-login-password —region us-east-1 | docker login —username AWS —password-stdin public.ecr.aws
-```
-
-**Verification**: Verify AWS Load Balancer Controller pods
-
-```bash
-for CELL in $CELL_1 $CELL_2 $CELL_3; do
-  echo "Checking AWS Load Balancer Controller pods in $CELL..."
-  kubectl get pods -n kube-system -l app.kubernetes.io/name=aws-load-balancer-controller --context $CELL
-done
-```
-
-#### Phase 5: Application Deployment (~ 5 minutes)
-
-With our infrastructure in place, we'll deploy sample applications to each cell.
-
-```bash
-# Deploy Kubernetes deployments, services and ingress resources
-terraform apply -target="kubernetes_deployment.cell1_app" -target="kubernetes_deployment.cell2_app" -target="kubernetes_deployment.cell3_app" -auto-approve
-terraform apply -target="kubernetes_service.cell1_service" -target="kubernetes_service.cell2_service" -target="kubernetes_service.cell3_service" -auto-approve
-terraform apply -target="kubernetes_manifest.cell1_ingress" -target="kubernetes_manifest.cell2_ingress" -target="kubernetes_manifest.cell3_ingress" -auto-approve
-
-# Wait for ALBs to be created by AWS Load Balancer Controller (this may take a few minutes)
-echo "Waiting for ALBs to be created by AWS Load Balancer Controller..."
-sleep 120
-aws elbv2 describe-load-balancers --query 'LoadBalancers[*].[LoadBalancerName,DNSName]' --output table
-```
-
-**Verification**: Check ingress resources
-
-```bash
-# Checking Ingress resources in all Cells
-for CELL in $CELL_1 $CELL_2 $CELL_3; do
-  echo "Checking ingress resources in $CELL..."
-  kubectl get ingress -n default --context $CELL
-done
-
-# Checking PODs in all Cells
-for CELL in $CELL_1 $CELL_2 $CELL_3; do
-  echo "Checking application pods in $CELL..."
-  kubectl get pods -n default --context $CELL
-done
-```
-
-#### Phase 6: Route53 Configuration (~ 2 minutes)
-
-Finally, we'll configure Route53 records in your existing hosted zone for DNS-based routing across our cells.
-
-```bash
-# Deploy Route53 records
-terraform apply -target="data.aws_lb.cell1_alb" -target="data.aws_lb.cell2_alb" -target="data.aws_lb.cell3_alb" -auto-approve
-terraform apply -target="aws_route53_record.cell1_alias" -target="aws_route53_record.cell2_alias" -target="aws_route53_record.cell3_alias" -auto-approve
-terraform apply -target="aws_route53_record.main" -target="aws_route53_record.main_cell2" -target="aws_route53_record.main_cell3" -auto-approve
-```
-
-**Verification**: Verify Route53 records
-
-```bash
-aws route53 list-resource-record-sets --hosted-zone-id $(terraform output -raw route53_zone_id) --query "ResourceRecordSets[?contains(Name,'$(terraform output -raw domain_name)')]"
-```
-
-#### Environment Setup
-
-The deployment process includes environment setup through shell scripts:
-
-```bash
-# Source the setup script to set up your environment
-source setup-env.sh
-```
-
-This will automatically:
-
-1. Set the cluster names (CELL_1, CELL_2, CELL_3)
-2. Set the AWS region
-3. Get your AWS account number
-4. Get the subnet IDs for each cell
-5. Create the kubectl alias
-6. Update your kubeconfig for all clusters
-
-Similarly, to restart the AWS Load Balancer Controller pods:
-
-```bash
-# Execute the restart script
-./restart-lb-controller.sh
-```
-
-## Validation
-
-1. Export the necessary environment variables and update the local kubeconfig file.
-
-```bash
-# If you haven't already, set up your environment
-source setup-env.sh
-```
-
-2. Verify the existing nodes are deployed to their respective AZs
-
-**Note**: kgn is command alias to `kubernetes get nodes`
-
-```bash
-kgn --context ${CELL_1}
-kgn --context ${CELL_2}
-kgn --context ${CELL_3}
-```
-
-1. Verify that the AWS Load Balancer Controller is running in each cluster:
-
-```bash
-for CELL in $CELL_1 $CELL_2 $CELL_3; do
-  echo "Checking AWS Load Balancer Controller pods in $CELL..."
-  kubectl get pods -n kube-system -l app.kubernetes.io/name=aws-load-balancer-controller --context $CELL
-done
-```
-
-4. Verify that the ALBs have been created:
-
-```bash
-aws elbv2 describe-load-balancers --query 'LoadBalancers[*].[LoadBalancerName,DNSName]' --output table
-```
-
-## Cleanup
-
-To teardown and remove the resources created in the pattern, follow these steps:
-
-#### 1. Ensure your kubeconfig is up-to-date
-
-```bash
-# Source the environment setup script to update kubeconfig
-source setup-env.sh
-```
-
-#### 2. Delete Kubernetes resources directly using kubectl
-
-This step ensures that Kubernetes resources are properly removed before proceeding with Terraform destroy:
-
-```bash
-# Delete ingress resources using kubectl
-kubectl delete ingress cell1-ingress --context $CELL_1 --ignore-not-found=true
-kubectl delete ingress cell2-ingress --context $CELL_2 --ignore-not-found=true
-kubectl delete ingress cell3-ingress --context $CELL_3 --ignore-not-found=true
-
-# Delete services
-kubectl delete service cell1-service --context $CELL_1 --ignore-not-found=true
-kubectl delete service cell2-service --context $CELL_2 --ignore-not-found=true
-kubectl delete service cell3-service --context $CELL_3 --ignore-not-found=true
-
-# Delete deployments
-kubectl delete deployment cell1-app --context $CELL_1 --ignore-not-found=true
-kubectl delete deployment cell2-app --context $CELL_2 --ignore-not-found=true
-kubectl delete deployment cell3-app --context $CELL_3 --ignore-not-found=true
-
-# Wait for resources to be deleted
-echo "Waiting for Kubernetes resources to be deleted..."
-sleep 30
-```
-
-#### 3. Remove resources from Terraform state if needed
-
-If you encounter errors with Kubernetes resources during destroy, you can remove them from the Terraform state:
-
-```bash
-# Only run these commands if you encounter errors with these resources
-terraform state rm kubernetes_manifest.cell1_ingress 2>/dev/null || true
-terraform state rm kubernetes_manifest.cell2_ingress 2>/dev/null || true
-terraform state rm kubernetes_manifest.cell3_ingress 2>/dev/null || true
-terraform state rm kubernetes_service.cell1_service 2>/dev/null || true
-terraform state rm kubernetes_service.cell2_service 2>/dev/null || true
-terraform state rm kubernetes_service.cell3_service 2>/dev/null || true
-terraform state rm kubernetes_deployment.cell1_app 2>/dev/null || true
-terraform state rm kubernetes_deployment.cell2_app 2>/dev/null || true
-terraform state rm kubernetes_deployment.cell3_app 2>/dev/null || true
-```
-
-#### 4. Proceed with Terraform destroy
-
-```bash
-# First remove Route53 records
-terraform destroy -target="aws_route53_record.main" -target="aws_route53_record.main_cell2" -target="aws_route53_record.main_cell3" -auto-approve
-terraform destroy -target="aws_route53_record.cell1_alias" -target="aws_route53_record.cell2_alias" -target="aws_route53_record.cell3_alias" -auto-approve
-
-# Remove EKS clusters and addons
-terraform destroy -target="module.eks_blueprints_addons_cell1" -auto-approve
-terraform destroy -target="module.eks_blueprints_addons_cell2" -auto-approve
-terraform destroy -target="module.eks_blueprints_addons_cell3" -auto-approve
-
-# Remove IAM roles and policies
-terraform destroy -target="aws_iam_role_policy_attachment.lb_controller_policy_attachment_cell1" -target="aws_iam_role_policy_attachment.lb_controller_policy_attachment_cell2" -target="aws_iam_role_policy_attachment.lb_controller_policy_attachment_cell3" -auto-approve
-terraform destroy -target="aws_iam_role.lb_controller_role_cell1" -target="aws_iam_role.lb_controller_role_cell2" -target="aws_iam_role.lb_controller_role_cell3" -auto-approve
-terraform destroy -target="aws_iam_policy.lb_controller" -auto-approve
-
-# Remove EKS clusters
-terraform destroy -target="module.eks_cell1" -auto-approve
-terraform destroy -target="module.eks_cell2" -auto-approve
-terraform destroy -target="module.eks_cell3" -auto-approve
-
-# Remove remaining resources
-terraform destroy -auto-approve
-```
-
-## Troubleshooting
-
-For troubleshooting issues during deployment or operation, please refer to the [TROUBLESHOOTING.md](TROUBLESHOOTING.md) file.
+Please refer to [Full Implementation Guide](https://gitlab.aws.dev/wwso-guidance-samples/implementation-guides/guidance-for-cell-based-architecture/-/blob/main/cba_eks_IG.md) for detailed instructions to deploy **EKS Cell Based Architecture for High Availability**.
 
 ## Notices
 
@@ -557,3 +293,6 @@ Customers are responsible for making their own independent assessment of the inf
 - Raj Bagwe, Senior Solutions Architect,AWS
 - Ashok Srirama, Specialist Principal Solutions Architect, AWS
 - Daniel Zilberman, Senior Solutions Architect,AWS Tech Solutions
+
+## Acknowledgements
+Special thanks to Preetam Rebello, Senior Technical Account Manager, AWS for reviewing and providing feedback on this content.
