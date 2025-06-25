@@ -100,7 +100,7 @@ This architecture ensures that if any single Availability Zone fails, traffic au
 
 ## Architecture Diagram
 
-![Figure 1: Guidance for a Cell-Based Architecture for Amazon EKS Reference Architecture](images/EKS-cell-architecture-v3.6.png)
+![Figure 1: Guidance for a Cell-Based Architecture for Amazon EKS Reference Architecture](assets/eks-cell-reference-architecture-steps.jpg)
 Figure 1. Guidance for a Cell-Based Architecture for Amazon EKS - Reference Architecture
 <br/>
 ## Architecture Steps
@@ -202,8 +202,7 @@ The EKS Cell-Based Architecture provides high availability but requires careful 
 |-----------|-------------------|
 | Fixed Costs | $721.82 |
 | Variable Costs | $63.50 - $315+ |
-| **Total Estimated Range** | $785 - $1,037+ |
-
+| **Total Estimated Cost Range** | $785 - $1,037+ |
 
 
 #### Cost Optimization Considerations
