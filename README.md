@@ -1,8 +1,8 @@
-# EKS Cell-Based Architecture for High Availability
+# Guidance for a Cell-Based Architecture for Amazon EKS on AWS
 
 ## Table of Contents
 
-- [EKS Cell-Based Architecture for High Availability](#eks-cell-based-architecture-for-high-availability)
+- [Guidance for a Cell-Based Architecture for Amazon EKS](#eks-cell-based-architecture-for-high-availability)
   - [Table of Contents](#table-of-contents)
   - [Overview](#overview)
   - [Features and Benefits](#features-and-benefits)
@@ -29,7 +29,7 @@
 
 ## Overview
 
-The EKS Cell-Based Architecture for High Availability is a resilient deployment pattern that distributes Amazon EKS workloads across multiple isolated "cells," with each cell confined to a single Availability Zone (AZ). This architecture enhances application availability by eliminating cross-AZ dependencies and providing isolation boundaries that prevent failures in one AZ from affecting others.
+The EKS Cell-Based Architecture for High Availability is a resilient deployment pattern that distributes Amazon EKS workloads across multiple isolated "cells," with each cell confined to a single Availability Zone (AZ). This architecture enhances application availability by eliminating cross-AZ dependencies and providing isolation boundaries that prevent failures in one AZ from affecting the others.
 
 By deploying independent EKS clusters in each AZ and using intelligent traffic routing, this pattern creates a highly available system that can withstand AZ failures while maintaining application availability.
 
@@ -100,10 +100,11 @@ This architecture ensures that if any single Availability Zone fails, traffic au
 
 ## Architecture Diagram
 
-![Figure 1: EKS Cellular Architecture](images/EKS-cell-architecture-v3.6.png)
-
+![Figure 1: Guidance for a Cell-Based Architecture for Amazon EKS Reference Architecture](images/EKS-cell-architecture-v3.6.png)
+Figure 1. Guidance for a Cell-Based Architecture for Amazon EKS - Reference Architecture
+<br/>
 ## Architecture Steps
-
+<!--
 1. **Environment Configuration**
    - DevOps engineer defines environment-specific configuration in a Terraform variable file (`terraform.tfvars`)
    - This configuration controls all aspects of the cell-based architecture deployment
@@ -146,6 +147,13 @@ This architecture ensures that if any single Availability Zone fails, traffic au
    - Weighted routing policy is configured to distribute traffic across all three cells (33/33/34% split)
    - Health checks are associated with each ALB to enable automatic failover
    - DNS TTL values are optimized for quick failover response
+-->
+
+<br/>1. A cell consists of an Amazon Elastic Kubernetes Service (Amazon EKS) cluster having its compute nodes (workloads) deployed within a single Availablility Zone (AZ). These cells are independent replicas of the application and create fault isolation boundary to limit the scope of impact. There can be multiple cells per AZ or also deployed across multiple AZs to provide high availability and availability zone resiliency
+<br/>2. Client requests are routed towards EKS workloads within each cell by a cell-routing layer, which consists of Elastic Load Balancing (ELB) service, Amazon Route53 weighted routing records, Amazon Application Recovery Controller to provide readiness checks, routing control and zonal shifts capability. Elastic Load Balancers load balances the traffic to EKS  Kubernetes resources within each cell. 
+<br/>3. Once the request reaches a cell, all subsequent, internal communications among the Kubernetes workloads stay with in that cell. This prevents cross cell dependency, making each cell statically stable and more resilient. Additionally with minimal inter-AZ communication, there are no related data transfer costs for “chatty” workloads as traffic never leaves the AZ boundary. EKS Workloads utilize Karpenter for compute node autoscaling.
+<br/>4. EKS workloads that require access to data persistence tier can continue to use other AWS managed Data Store services like Amazon Relational Database Service (RDS), Amazon DynamoDB, Amazon ElastiCache etc. which are available across multiple AZs for high availability.
+
 
 ## AWS Services and Components
 | AWS Service | Role | Description |
@@ -282,7 +290,8 @@ To request a quota increase, use the [**Service Quotas console**](https://consol
 
 ## Deployment Steps
 
-Please refer to [Full Implementation Guide](https://gitlab.aws.dev/wwso-guidance-samples/implementation-guides/guidance-for-cell-based-architecture/-/blob/main/cba_eks_IG.md) for detailed instructions to deploy **EKS Cell Based Architecture for High Availability**.
+**TO DO: replace with live link to IG once it is published**
+Please refer to [Implementation Guide](https://implementationguides.kits.eventoutfitters.aws.dev/cba-eks-0603/compute/cell-based-architecture-for-amazon-eks.html) for detailed instructions to deploy **Guidance for a Cell-Based Architecture for Amazon EKS on AWS**.
 
 ## Notices
 
