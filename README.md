@@ -2,7 +2,7 @@
 
 ## Table of Contents
 
-- [Guidance for a Cell-Based Architecture for Amazon EKS](#eks-cell-based-architecture-for-high-availability)
+- [Guidance for a Cell-Based Architecture for Amazon EKS on AWS](#guidance-for-a-cell-based-architecture-for-amazon-eks-on-aws)
   - [Table of Contents](#table-of-contents)
   - [Overview](#overview)
   - [Features and Benefits](#features-and-benefits)
@@ -27,11 +27,15 @@
   - [Authors](#authors)
   - [Acknowledgements](#acknowledgements)
 
+<br/>
+
 ## Overview
 
 The EKS Cell-Based Architecture for High Availability is a resilient deployment pattern that distributes Amazon EKS workloads across multiple isolated "cells," with each cell confined to a single Availability Zone (AZ). This architecture enhances application availability by eliminating cross-AZ dependencies and providing isolation boundaries that prevent failures in one AZ from affecting the others.
 
 By deploying independent EKS clusters in each AZ and using intelligent traffic routing, this pattern creates a highly available system that can withstand AZ failures while maintaining application availability.
+
+<br/>
 
 ## Features and Benefits
 
@@ -51,6 +55,8 @@ By deploying independent EKS clusters in each AZ and using intelligent traffic r
 
 - **Consistent Infrastructure**: Uses Terraform to ensure consistent configuration across all cells.
 
+<br/>
+
 ## Use cases
 
 - **Mission-Critical Applications**: For applications that require extremely high availability and cannot tolerate even brief outages.
@@ -60,6 +66,8 @@ By deploying independent EKS clusters in each AZ and using intelligent traffic r
 - **High-Traffic Applications**: Consumer-facing applications that need to handle large traffic volumes with consistent performance and increased resilience.
 
 - **Disaster Recovery Solutions**: As part of a comprehensive disaster recovery strategy with multiple fallback options.
+
+<br/>
 
 ## Architecture Overview
 
@@ -98,11 +106,14 @@ The cell-based EKS architecture consists of several key components working toget
 
 This architecture ensures that if any single Availability Zone fails, traffic automatically routes to the remaining healthy cells, maintaining application availability without manual intervention. The cell-based approach provides stronger isolation than traditional multi-AZ deployments, as each cell operates independently with its own control plane and data plane resources.
 
+
 ## Architecture Diagram
 
-![Figure 1: Guidance for a Cell-Based Architecture for Amazon EKS Reference Architecture](assets/eks-cell-reference-architecture-steps.jpg)
+![Figure 1: Guidance for a Cell-Based Architecture for Amazon EKS Reference Architecture](assets/eks-cell-reference-architecture-steps_v3.7.png)
 Figure 1. Guidance for a Cell-Based Architecture for Amazon EKS - Reference Architecture
+
 <br/>
+
 ## Architecture Steps
 <!--
 1. **Environment Configuration**
@@ -148,14 +159,22 @@ Figure 1. Guidance for a Cell-Based Architecture for Amazon EKS - Reference Arch
    - Health checks are associated with each ALB to enable automatic failover
    - DNS TTL values are optimized for quick failover response
 -->
+**1.** A cell consists of an Amazon Elastic Kubernetes Service (Amazon EKS) cluster having its compute nodes (workloads) and dedicated AWS Application Load Balancers (AWS ALB) deployed within a single Availablity Zone (AZ). These cells are independent replicas of the application, and create fault isolation boundary to limit the scope of impact. There can be multiple cells per AZ, and are also deployed across multiple AZs to provide high availability and resiliency against AZ wide failures.
+<br/>
 
-<br/>1. A cell consists of an Amazon Elastic Kubernetes Service (Amazon EKS) cluster having its compute nodes (workloads) deployed within a single Availablility Zone (AZ). These cells are independent replicas of the application and create fault isolation boundary to limit the scope of impact. There can be multiple cells per AZ or also deployed across multiple AZs to provide high availability and availability zone resiliency
-<br/>2. Client requests are routed towards EKS workloads within each cell by a cell-routing layer, which consists of Elastic Load Balancing (ELB) service, Amazon Route53 weighted routing records, Amazon Application Recovery Controller to provide readiness checks, routing control and zonal shifts capability. Elastic Load Balancers load balances the traffic to EKS  Kubernetes resources within each cell. 
-<br/>3. Once the request reaches a cell, all subsequent, internal communications among the Kubernetes workloads stay with in that cell. This prevents cross cell dependency, making each cell statically stable and more resilient. Additionally with minimal inter-AZ communication, there are no related data transfer costs for “chatty” workloads as traffic never leaves the AZ boundary. EKS Workloads utilize Karpenter for compute node autoscaling.
-<br/>4. EKS workloads that require access to data persistence tier can continue to use other AWS managed Data Store services like Amazon Relational Database Service (RDS), Amazon DynamoDB, Amazon ElastiCache etc. which are available across multiple AZs for high availability.
+**2.** Clients are routed towards Amazon EKS workloads within each cell by a cell-routing layer, which consists of AWS Route53 weighted routing records, Amazon Application Recovery Controller to provide readiness checks, routing control and zonal shifts capability. AWS Application Load Balancer load balances the traffic to the Kubernetes resources with in each cell.
+<br/>
 
+**3.** Once the request reaches a cell, all subsequent, internal communications among the Kubernetes (k8s) workloads stays with in the cell. This prevents cross cell dependency, making each cell statically stable and more resilient. Additionally with minimal inter-AZ communication, there are no inter-AZ data transfer costs for chatty workloads as traffic never leaves the AZ boundary. EKS Workloads utilize Karpenter for compute autoscaling needs.
+<br/>
+
+**4.** EKS workloads that require access to data persistence can continue to use other AWS managed Data Store services like Amazon RDS, Amazon DynamoDB, Amazon ElastiCache etc., which are spanned across multiple AZs for High Availability.
+
+
+<br/>
 
 ## AWS Services and Components
+
 | AWS Service | Role | Description |
 |-------------|------|-------------|
 | Amazon VPC | Network Foundation | Provides isolated network infrastructure with public and private subnets across three AZs, enabling secure communication between components |
@@ -174,7 +193,7 @@ Figure 1. Guidance for a Cell-Based Architecture for Amazon EKS - Reference Arch
 | EKS Add-ons | Cluster Extensions | Provides essential functionality including: CoreDNS for service discovery (runs on managed node groups), VPC CNI for pod networking (runs on all nodes), Kube-proxy for network routing (runs on all nodes) |
 | Terraform | Infrastructure as Code | Automates the provisioning and configuration of all AWS resources in a repeatable manner |
 
-    
+<br/>
 
 ## Cost
 
@@ -184,11 +203,11 @@ The EKS Cell-Based Architecture provides high availability but requires careful 
 
 | AWS Service | Dimensions | Cost per Month (USD) |
 |-------------|------------|---------------------|
-| EKS Clusters | $0.10/hour × 3 clusters × 720 hours | $216.00 |
-| EC2 Instances | 6 × m5.large instances × 720 hours × $0.096/hour | $414.72 |
+| EKS Clusters | $0.10/hour × 3 clusters × 720 hours | $219.00 |
+| EC2 Instances | 6 × m5.large instances × 720 hours × $0.096/hour | $420.48 |
 | Application Load Balancers | $0.0225/hour × 3 ALBs × 720 hours | $48.60 |
 | ALB Data Processing | $0.008/LCU-hour (variable based on traffic) | $10-50+ |
-| NAT Gateway - Hourly | $0.045/hour × 720 hours | $32.40 |
+| NAT Gateway - Hourly | $0.045/hour × 720 hours | $32.87 |
 | NAT Gateway - Data Processing | $0.045/GB processed (variable) | $20-100+ |
 | Route53 - Hosted Zone | $0.50/hosted zone | $0.50 |
 | Route53 - DNS Queries | $0.40/million queries after first 1B | $1-5 |
@@ -214,6 +233,8 @@ The EKS Cell-Based Architecture provides high availability but requires careful 
 5. **Consider Savings Plans or Reserved Instances**: For baseline capacity if workloads are stable
 
 This architecture prioritizes high availability over cost optimization. Use the [**AWS Pricing Calculator**](https://calculator.aws) to estimate costs for your specific deployment.
+
+<br/>
 
 ## Security
 
@@ -251,9 +272,13 @@ The EKS Cell-Based Architecture implements multiple layers of security to protec
 - Implement proper logging and auditing mechanisms for both AWS and Kubernetes resources.
 - Regularly review and rotate IAM and Kubernetes RBAC permissions.
 
+<br/>
+
 ## Supported AWS Regions
 
 The core components of the Guidance for EKS Cell based Architecture are available in all AWS Regions where Amazon EKS is supported.
+
+<br/>
 
 ## Quotas
 
@@ -287,20 +312,28 @@ For specific implementation quotas, consider the following key components and se
 
 To request a quota increase, use the [**Service Quotas console**](https://console.aws.amazon.com/servicequotas/) or contact [**AWS Support**](https://aws.amazon.com/contact-us/).
 
+<br/>
+
 ## Deployment Steps
 
 **TO DO: replace with live link to IG once it is published**
 Please refer to [Implementation Guide](https://implementationguides.kits.eventoutfitters.aws.dev/cba-eks-0603/compute/cell-based-architecture-for-amazon-eks.html) for detailed instructions to deploy **Guidance for a Cell-Based Architecture for Amazon EKS on AWS**.
 
+<br/>
+
 ## Notices
 
 Customers are responsible for making their own independent assessment of the information in this Guidance. This Guidance: (a) is for informational purposes only, (b) represents AWS current product offerings and practices, which are subject to change without notice, and (c) does not create any commitments or assurances from AWS and its affiliates, suppliers or licensors. AWS products or services are provided “as is” without warranties, representations, or conditions of any kind, whether express or implied. AWS responsibilities and liabilities to its customers are controlled by AWS agreements, and this Guidance is not part of, nor does it modify, any agreement between AWS and its customers.
+
+<br/>
 
 ## Authors
 
 - Raj Bagwe, Senior Solutions Architect,AWS
 - Ashok Srirama, Specialist Principal Solutions Architect, AWS
 - Daniel Zilberman, Senior Solutions Architect,AWS Tech Solutions
+
+<br/>
 
 ## Acknowledgements
 Special thanks to Preetam Rebello, Senior Technical Account Manager, AWS for reviewing and providing feedback on this content.
