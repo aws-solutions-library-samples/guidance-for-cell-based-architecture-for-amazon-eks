@@ -1,4 +1,4 @@
-# Guidance for a Cell-Based Architecture for Amazon EKS on AWS
+# Guidance for a Cell-Based Architecture for Amazon EKS on AWS 
 
 ## Table of Contents
 
@@ -226,14 +226,13 @@ The EKS Cell-Based Architecture provides high availability but requires careful 
 
 #### Cost Optimization Considerations
 
-1. **Leverage Karpenter efficiently**: Configure appropriate provisioners to optimize instance selection
+1. **Leverage Karpenter efficiently**: Configure appropriate provisioners to optimize AMI instance selection
 2. **Right-size your managed node groups**: Start with smaller instance types and scale up if needed
 3. **Use Spot Instances**: Configure Karpenter to use Spot Instances for further cost optimization
 4. **Monitor and analyze costs**: Use AWS Cost Explorer to identify optimization opportunities
 5. **Consider Savings Plans or Reserved Instances**: For baseline capacity if workloads are stable
 
 This architecture prioritizes high availability over cost optimization. Use the [**AWS Pricing Calculator**](https://calculator.aws) to estimate costs for your specific deployment.
-
 <br/>
 
 ## Security
@@ -277,7 +276,6 @@ The EKS Cell-Based Architecture implements multiple layers of security to protec
 ## Supported AWS Regions
 
 The core components of the Guidance for EKS Cell based Architecture are available in all AWS Regions where Amazon EKS is supported.
-
 <br/>
 
 ## Quotas
