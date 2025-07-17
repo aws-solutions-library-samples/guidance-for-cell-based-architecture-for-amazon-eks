@@ -325,7 +325,7 @@ resource "kubernetes_manifest" "cell1_ingress" {
   ]
 }
 
-# Temporary workaround to disable cross zone load balancing
+# Disable cross zone load balancing
 resource "null_resource" "cell1_tg_config" {
   depends_on = [kubernetes_manifest.cell1_ingress]
 
@@ -406,7 +406,7 @@ resource "kubernetes_manifest" "cell2_ingress" {
 }
 
 
-# Temporary workaround to disable cross zone load balancing
+# Disable cross zone load balancing
 resource "null_resource" "cell2_tg_config" {
   depends_on = [kubernetes_manifest.cell2_ingress]
 
@@ -486,7 +486,7 @@ resource "kubernetes_manifest" "cell3_ingress" {
   ]
 }
 
-# Temporary workaround to disable cross zone load balancing
+# Disable cross zone load balancing
 resource "null_resource" "cell3_tg_config" {
   depends_on = [kubernetes_manifest.cell3_ingress]
 
