@@ -46,6 +46,62 @@ error() {
   log "ERROR" "$1" "${RED}"
 }
 
+# Function to check network connectivity
+check_network_connectivity() {
+  info "=== CHECKING NETWORK CONNECTIVITY ==="
+  
+  # Check DNS resolution for AWS services
+  execute "Checking DNS resolution for CloudWatch Logs" \
+    "nslookup logs.us-west-2.amazonaws.com || true"
+  
+  # Check connectivity to AWS services
+  execute "Checking connectivity to CloudWatch Logs" \
+    "curl -s -o /dev/null -w '%{http_code}' https://logs.us-west-2.amazonaws.com || echo 'Failed to connect'"
+  
+  # Check AWS CLI configuration
+  execute "Checking AWS CLI configuration" \
+    "aws sts get-caller-identity || echo 'AWS CLI not properly configured'"
+  
+  info "Network connectivity check completed"
+}
+
+# Function to handle CloudWatch Logs errors
+handle_cloudwatch_logs_errors() {
+  info "=== HANDLING CLOUDWATCH LOGS ERRORS ==="
+  
+  # Check if AWS_REGION is set
+  if [ -z "$AWS_REGION" ]; then
+    error "AWS_REGION is not set. Cannot handle CloudWatch Logs errors."
+    return 1
+  fi
+  
+  # Try to manually delete CloudWatch Log Groups if they exist
+  for i in {1..3}; do
+    local cell_var="CELL_$i"
+    local cell_name="${!cell_var}"
+    
+    if [ -n "$cell_name" ]; then
+      local log_group_name="/aws/eks/${cell_name}/cluster"
+      
+      info "Checking if CloudWatch Log Group $log_group_name exists"
+      if aws logs describe-log-groups --log-group-name-prefix "$log_group_name" --region "$AWS_REGION" 2>/dev/null | grep -q "$log_group_name"; then
+        execute "Manually deleting CloudWatch Log Group $log_group_name" \
+          "aws logs delete-log-group --log-group-name \"$log_group_name\" --region \"$AWS_REGION\" || true"
+      else
+        info "CloudWatch Log Group $log_group_name does not exist or cannot be accessed"
+      fi
+    fi
+  done
+  
+  # Remove CloudWatch Log Groups from Terraform state
+  for i in {1..3}; do
+    execute "Removing CloudWatch Log Group for cell$i from Terraform state" \
+      "terraform state rm module.eks_cell$i.aws_cloudwatch_log_group.this[0] 2>/dev/null || true"
+  done
+  
+  success "CloudWatch Logs error handling completed"
+}
+
 # Update kubeconfig for each cluster
 update_kubeconfig() {
   info "=== UPDATING KUBECONFIG FOR EACH CLUSTER ==="
@@ -145,6 +201,13 @@ remove_from_tf_state() {
 destroy_terraform_resources() {
   info "=== DESTROYING TERRAFORM RESOURCES ==="
   
+  # Handle CloudWatch Logs resources with special error handling
+  info "Pre-stage: Handling CloudWatch Logs resources"
+  for i in {1..3}; do
+    execute "Attempting to remove CloudWatch Logs resources for cell$i from Terraform state" \
+      "terraform state rm module.eks_cell$i.aws_cloudwatch_log_group.this[0] 2>/dev/null || true"
+  done
+  
   # Stage 1: Route53 records
   info "Stage 1: Destroying Route53 records"
   execute "Destroying main Route53 records" \
@@ -175,7 +238,7 @@ destroy_terraform_resources() {
   info "Stage 4: Destroying EKS clusters"
   for i in {1..3}; do
     execute "Destroying EKS cluster cell$i" \
-      "terraform destroy -target=\"module.eks_cell$i\" -auto-approve"
+      "terraform destroy -target=\"module.eks_cell$i\" -auto-approve || warn \"Failed to destroy EKS cluster cell$i, continuing with next steps\""
   done
   
   # Stage 5: Remaining resources
@@ -199,6 +262,12 @@ main() {
       info "$cell_var is set to ${!cell_var}"
     fi
   done
+  
+  # Check network connectivity
+  check_network_connectivity
+  
+  # Handle CloudWatch Logs errors preemptively
+  handle_cloudwatch_logs_errors
   
   # Update kubeconfig for all clusters
   update_kubeconfig
