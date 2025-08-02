@@ -36,10 +36,6 @@ provider "helm" {
   }
 }
 
-locals {
-  cell1_name = format("%s-%s", local.name, "az1")
-}
-
 ################################################################################
 # Cluster
 ################################################################################
@@ -86,7 +82,7 @@ module "eks_cell1" {
 
 module "eks_blueprints_addons_cell1" {
   source  = "aws-ia/eks-blueprints-addons/aws"
-  version = "~> 1.16"
+  version = "~> 1.22"  # Latest version supporting Karpenter v1.x with EKS 1.31
 
   providers = {
     helm       = helm.helm-cell1
@@ -108,6 +104,30 @@ module "eks_blueprints_addons_cell1" {
   }
 
   enable_karpenter = true
+  karpenter = {
+    # Use Karpenter v1.0.5+ which officially supports Kubernetes 1.31
+    chart_version = "1.0.5"
+    repository_url = "oci://public.ecr.aws/karpenter/karpenter"
+    # Additional v1.x specific configurations
+    set = [
+      {
+        name  = "settings.clusterName"
+        value = module.eks_cell1.cluster_name
+      },
+      {
+        name  = "settings.clusterEndpoint"
+        value = module.eks_cell1.cluster_endpoint
+      },
+      {
+        name  = "controller.resources.requests.cpu"
+        value = "1"
+      },
+      {
+        name  = "controller.resources.requests.memory"
+        value = "1Gi"
+      }
+    ]
+  }
   karpenter_node = {
     # Use static name so that it matches what is defined in `az1.yaml` example manifest
     iam_role_use_name_prefix = false

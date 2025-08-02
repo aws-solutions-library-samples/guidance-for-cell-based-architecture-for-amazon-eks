@@ -4,7 +4,7 @@
 export CELL_1=eks-cell-az1
 export CELL_2=eks-cell-az2
 export CELL_3=eks-cell-az3
-export AWS_REGION=us-west-2
+export AWS_REGION=$(grep '^region' terraform.tfvars | cut -d'"' -f2)
 
 # Get AWS account number
 export AWS_ACCOUNT_NUMBER=$(aws sts get-caller-identity --query "Account" --output text)

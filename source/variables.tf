@@ -16,3 +16,8 @@ variable "acm_certificate_arn" {
   default     = "YOUR_ACM_CERTIFICATE_ARN"
 }
 
+variable "region" {
+  description = "AWS region for deployment"
+  type        = string
+}
+

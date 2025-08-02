@@ -20,6 +20,9 @@ metadata:
   name: default
 spec:
   template:
+    metadata:
+      labels:
+        node-type: "karpenter"
     spec:
       nodeClassRef:
         name: default

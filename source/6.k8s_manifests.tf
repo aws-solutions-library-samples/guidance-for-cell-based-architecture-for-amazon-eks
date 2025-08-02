@@ -98,8 +98,46 @@ resource "kubernetes_deployment" "cell1_app" {
       }
       
       spec {
-        node_selector = {
-          "topology.kubernetes.io/zone" = local.azs[0]
+        affinity {
+          node_affinity {
+            preferred_during_scheduling_ignored_during_execution {
+              weight = 100
+              preference {
+                match_expressions {
+                  key      = "karpenter.sh/nodepool"
+                  operator = "Exists"
+                }
+              }
+            }
+            preferred_during_scheduling_ignored_during_execution {
+              weight = 90
+              preference {
+                match_expressions {
+                  key      = "node-type"
+                  operator = "In"
+                  values   = ["karpenter"]
+                }
+              }
+            }
+            preferred_during_scheduling_ignored_during_execution {
+              weight = 80
+              preference {
+                match_expressions {
+                  key      = "eks.amazonaws.com/nodegroup"
+                  operator = "DoesNotExist"
+                }
+              }
+            }
+            required_during_scheduling_ignored_during_execution {
+              node_selector_term {
+                match_expressions {
+                  key      = "topology.kubernetes.io/zone"
+                  operator = "In"
+                  values   = [local.azs[0]]
+                }
+              }
+            }
+          }
         }
         
         container {
@@ -162,8 +200,46 @@ resource "kubernetes_deployment" "cell2_app" {
       }
       
       spec {
-        node_selector = {
-          "topology.kubernetes.io/zone" = local.azs[1]
+        affinity {
+          node_affinity {
+            preferred_during_scheduling_ignored_during_execution {
+              weight = 100
+              preference {
+                match_expressions {
+                  key      = "karpenter.sh/nodepool"
+                  operator = "Exists"
+                }
+              }
+            }
+            preferred_during_scheduling_ignored_during_execution {
+              weight = 90
+              preference {
+                match_expressions {
+                  key      = "node-type"
+                  operator = "In"
+                  values   = ["karpenter"]
+                }
+              }
+            }
+            preferred_during_scheduling_ignored_during_execution {
+              weight = 80
+              preference {
+                match_expressions {
+                  key      = "eks.amazonaws.com/nodegroup"
+                  operator = "DoesNotExist"
+                }
+              }
+            }
+            required_during_scheduling_ignored_during_execution {
+              node_selector_term {
+                match_expressions {
+                  key      = "topology.kubernetes.io/zone"
+                  operator = "In"
+                  values   = [local.azs[1]]
+                }
+              }
+            }
+          }
         }
         
         container {
@@ -226,8 +302,46 @@ resource "kubernetes_deployment" "cell3_app" {
       }
       
       spec {
-        node_selector = {
-          "topology.kubernetes.io/zone" = local.azs[2]
+        affinity {
+          node_affinity {
+            preferred_during_scheduling_ignored_during_execution {
+              weight = 100
+              preference {
+                match_expressions {
+                  key      = "karpenter.sh/nodepool"
+                  operator = "Exists"
+                }
+              }
+            }
+            preferred_during_scheduling_ignored_during_execution {
+              weight = 90
+              preference {
+                match_expressions {
+                  key      = "node-type"
+                  operator = "In"
+                  values   = ["karpenter"]
+                }
+              }
+            }
+            preferred_during_scheduling_ignored_during_execution {
+              weight = 80
+              preference {
+                match_expressions {
+                  key      = "eks.amazonaws.com/nodegroup"
+                  operator = "DoesNotExist"
+                }
+              }
+            }
+            required_during_scheduling_ignored_during_execution {
+              node_selector_term {
+                match_expressions {
+                  key      = "topology.kubernetes.io/zone"
+                  operator = "In"
+                  values   = [local.azs[2]]
+                }
+              }
+            }
+          }
         }
         
         container {
@@ -502,4 +616,386 @@ resource "null_resource" "cell3_tg_config" {
         --attributes Key=load_balancing.cross_zone.enabled,Value=false
     EOT
   }
+}
+
+################################################################################
+# Karpenter NodePool and EC2NodeClass Resources
+################################################################################
+
+# Karpenter EC2NodeClass for Cell 1
+resource "kubernetes_manifest" "karpenter_ec2nodeclass_cell1" {
+  provider = kubernetes.k8s-cell1
+  
+  manifest = {
+    apiVersion = "karpenter.k8s.aws/v1"  # Updated to v1 for Karpenter v1.0.5+
+    kind       = "EC2NodeClass"
+    metadata = {
+      name = "default"
+    }
+    spec = {
+      amiFamily = "AL2023"
+      amiSelectorTerms = [
+        {
+          owner = "amazon"
+          name  = "amazon-eks-node-al2023-x86_64-standard-*"
+        },
+        {
+          owner = "amazon"
+          name  = "amazon-eks-node-al2023-arm64-standard-*"
+        },
+        {
+          owner = "amazon"
+          tags = {
+            "Name" = "amazon-eks-node-al2023-*"
+          }
+        }
+      ]
+      role      = module.eks_blueprints_addons_cell1.karpenter.node_iam_role_name
+      subnetSelectorTerms = [
+        {
+          tags = {
+            "karpenter.sh/discovery" = local.cell1_name
+          }
+        }
+      ]
+      securityGroupSelectorTerms = [
+        {
+          tags = {
+            "karpenter.sh/discovery" = local.cell1_name
+          }
+        }
+      ]
+      tags = {
+        "karpenter.sh/discovery" = local.cell1_name
+      }
+    }
+  }
+
+  depends_on = [
+    module.eks_blueprints_addons_cell1
+  ]
+}
+
+# Karpenter NodePool for Cell 1
+resource "kubernetes_manifest" "karpenter_nodepool_cell1" {
+  provider = kubernetes.k8s-cell1
+  
+  manifest = {
+    apiVersion = "karpenter.sh/v1"  # Updated to v1 for Karpenter v1.0.5+
+    kind       = "NodePool"
+    metadata = {
+      name = "default"
+    }
+    spec = {
+      template = {
+        metadata = {
+          labels = {
+            node-type = "karpenter"
+          }
+        }
+        spec = {
+          nodeClassRef = {
+            group = "karpenter.k8s.aws"
+            kind  = "EC2NodeClass"
+            name  = "default"
+          }
+          requirements = [
+            {
+              key      = "karpenter.k8s.aws/instance-category"
+              operator = "In"
+              values   = ["c", "m", "r"]
+            },
+            {
+              key      = "karpenter.k8s.aws/instance-cpu"
+              operator = "In"
+              values   = ["4", "8", "16", "32"]
+            },
+            {
+              key      = "karpenter.k8s.aws/instance-hypervisor"
+              operator = "In"
+              values   = ["nitro"]
+            },
+            {
+              key      = "karpenter.k8s.aws/instance-generation"
+              operator = "Gt"
+              values   = ["2"]
+            },
+            {
+              key      = "topology.kubernetes.io/zone"
+              operator = "In"
+              values   = [local.azs[0]]
+            },
+            {
+              key      = "karpenter.sh/capacity-type"
+              operator = "In"
+              values   = ["on-demand"]
+            }
+          ]
+        }
+      }
+      limits = {
+        cpu = 10000
+      }
+      disruption = {
+        consolidationPolicy = "WhenEmpty"
+        consolidateAfter    = "30s"
+      }
+    }
+  }
+
+  depends_on = [
+    kubernetes_manifest.karpenter_ec2nodeclass_cell1
+  ]
+}
+
+# Karpenter EC2NodeClass for Cell 2
+resource "kubernetes_manifest" "karpenter_ec2nodeclass_cell2" {
+  provider = kubernetes.k8s-cell2
+  
+  manifest = {
+    apiVersion = "karpenter.k8s.aws/v1"  # Updated to v1 for Karpenter v1.0.5+
+    kind       = "EC2NodeClass"
+    metadata = {
+      name = "default"
+    }
+    spec = {
+      amiFamily = "AL2023"
+      amiSelectorTerms = [
+        {
+          owner = "amazon"
+          name  = "amazon-eks-node-al2023-x86_64-standard-*"
+        },
+        {
+          owner = "amazon"
+          name  = "amazon-eks-node-al2023-arm64-standard-*"
+        },
+        {
+          owner = "amazon"
+          tags = {
+            "Name" = "amazon-eks-node-al2023-*"
+          }
+        }
+      ]
+      role      = module.eks_blueprints_addons_cell2.karpenter.node_iam_role_name
+      subnetSelectorTerms = [
+        {
+          tags = {
+            "karpenter.sh/discovery" = local.cell2_name
+          }
+        }
+      ]
+      securityGroupSelectorTerms = [
+        {
+          tags = {
+            "karpenter.sh/discovery" = local.cell2_name
+          }
+        }
+      ]
+      tags = {
+        "karpenter.sh/discovery" = local.cell2_name
+      }
+    }
+  }
+
+  depends_on = [
+    module.eks_blueprints_addons_cell2
+  ]
+}
+
+# Karpenter NodePool for Cell 2
+resource "kubernetes_manifest" "karpenter_nodepool_cell2" {
+  provider = kubernetes.k8s-cell2
+  
+  manifest = {
+    apiVersion = "karpenter.sh/v1"  # Updated to v1 for Karpenter v1.0.5+
+    kind       = "NodePool"
+    metadata = {
+      name = "default"
+    }
+    spec = {
+      template = {
+        metadata = {
+          labels = {
+            node-type = "karpenter"
+          }
+        }
+        spec = {
+          nodeClassRef = {
+            group = "karpenter.k8s.aws"
+            kind  = "EC2NodeClass"
+            name  = "default"
+          }
+          requirements = [
+            {
+              key      = "karpenter.k8s.aws/instance-category"
+              operator = "In"
+              values   = ["c", "m", "r"]
+            },
+            {
+              key      = "karpenter.k8s.aws/instance-cpu"
+              operator = "In"
+              values   = ["4", "8", "16", "32"]
+            },
+            {
+              key      = "karpenter.k8s.aws/instance-hypervisor"
+              operator = "In"
+              values   = ["nitro"]
+            },
+            {
+              key      = "karpenter.k8s.aws/instance-generation"
+              operator = "Gt"
+              values   = ["2"]
+            },
+            {
+              key      = "topology.kubernetes.io/zone"
+              operator = "In"
+              values   = [local.azs[1]]
+            },
+            {
+              key      = "karpenter.sh/capacity-type"
+              operator = "In"
+              values   = ["on-demand"]
+            }
+          ]
+        }
+      }
+      limits = {
+        cpu = 10000
+      }
+      disruption = {
+        consolidationPolicy = "WhenEmpty"
+        consolidateAfter    = "30s"
+      }
+    }
+  }
+
+  depends_on = [
+    kubernetes_manifest.karpenter_ec2nodeclass_cell2
+  ]
+}
+
+# Karpenter EC2NodeClass for Cell 3
+resource "kubernetes_manifest" "karpenter_ec2nodeclass_cell3" {
+  provider = kubernetes.k8s-cell3
+  
+  manifest = {
+    apiVersion = "karpenter.k8s.aws/v1"  # Updated to v1 for Karpenter v1.0.5+
+    kind       = "EC2NodeClass"
+    metadata = {
+      name = "default"
+    }
+    spec = {
+      amiFamily = "AL2023"
+      amiSelectorTerms = [
+        {
+          owner = "amazon"
+          name  = "amazon-eks-node-al2023-x86_64-standard-*"
+        },
+        {
+          owner = "amazon"
+          name  = "amazon-eks-node-al2023-arm64-standard-*"
+        },
+        {
+          owner = "amazon"
+          tags = {
+            "Name" = "amazon-eks-node-al2023-*"
+          }
+        }
+      ]
+      role      = module.eks_blueprints_addons_cell3.karpenter.node_iam_role_name
+      subnetSelectorTerms = [
+        {
+          tags = {
+            "karpenter.sh/discovery" = local.cell3_name
+          }
+        }
+      ]
+      securityGroupSelectorTerms = [
+        {
+          tags = {
+            "karpenter.sh/discovery" = local.cell3_name
+          }
+        }
+      ]
+      tags = {
+        "karpenter.sh/discovery" = local.cell3_name
+      }
+    }
+  }
+
+  depends_on = [
+    module.eks_blueprints_addons_cell3
+  ]
+}
+
+# Karpenter NodePool for Cell 3
+resource "kubernetes_manifest" "karpenter_nodepool_cell3" {
+  provider = kubernetes.k8s-cell3
+  
+  manifest = {
+    apiVersion = "karpenter.sh/v1"  # Updated to v1 for Karpenter v1.0.5+
+    kind       = "NodePool"
+    metadata = {
+      name = "default"
+    }
+    spec = {
+      template = {
+        metadata = {
+          labels = {
+            node-type = "karpenter"
+          }
+        }
+        spec = {
+          nodeClassRef = {
+            group = "karpenter.k8s.aws"
+            kind  = "EC2NodeClass"
+            name  = "default"
+          }
+          requirements = [
+            {
+              key      = "karpenter.k8s.aws/instance-category"
+              operator = "In"
+              values   = ["c", "m", "r"]
+            },
+            {
+              key      = "karpenter.k8s.aws/instance-cpu"
+              operator = "In"
+              values   = ["4", "8", "16", "32"]
+            },
+            {
+              key      = "karpenter.k8s.aws/instance-hypervisor"
+              operator = "In"
+              values   = ["nitro"]
+            },
+            {
+              key      = "karpenter.k8s.aws/instance-generation"
+              operator = "Gt"
+              values   = ["2"]
+            },
+            {
+              key      = "topology.kubernetes.io/zone"
+              operator = "In"
+              values   = [local.azs[2]]
+            },
+            {
+              key      = "karpenter.sh/capacity-type"
+              operator = "In"
+              values   = ["on-demand"]
+            }
+          ]
+        }
+      }
+      limits = {
+        cpu = 10000
+      }
+      disruption = {
+        consolidationPolicy = "WhenEmpty"
+        consolidateAfter    = "30s"
+      }
+    }
+  }
+
+  depends_on = [
+    kubernetes_manifest.karpenter_ec2nodeclass_cell3
+  ]
 }

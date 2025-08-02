@@ -1,0 +1,28 @@
+# Example: Force scheduling ONLY on Karpenter nodes
+# Replace the current preferred affinity with required affinity
+
+affinity:
+  node_affinity:
+    required_during_scheduling_ignored_during_execution:
+      node_selector_terms:
+        - match_expressions:
+            # REQUIRED: Must be in specific AZ (current behavior)
+            - key: "topology.kubernetes.io/zone"
+              operator: "In"
+              values: [local.azs[0]]  # Cell 1 AZ
+            # NEW: REQUIRED: Must be a Karpenter node
+            - key: "node-type"
+              operator: "In"
+              values: ["karpenter"]
+        # Alternative approach using Karpenter nodepool label
+        - match_expressions:
+            - key: "topology.kubernetes.io/zone"
+              operator: "In"
+              values: [local.azs[0]]
+            - key: "karpenter.sh/nodepool"
+              operator: "Exists"
+
+# OR use node selector (simpler approach)
+nodeSelector:
+  node-type: "karpenter"
+  topology.kubernetes.io/zone: "us-west-2a"  # Replace with actual AZ
