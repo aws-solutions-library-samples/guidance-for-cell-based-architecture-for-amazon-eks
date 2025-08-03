@@ -226,7 +226,7 @@ The EKS Cell-Based Architecture provides high availability but requires careful 
 
 #### Cost Optimization Considerations
 
-1. **Leverage Karpenter efficiently**: Configure appropriate provisioners to optimize AMI instance selection
+1. **Leverage Karpenter efficiently**: Configure appropriate provisioners to optimize instance selection
 2. **Right-size your managed node groups**: Start with smaller instance types and scale up if needed
 3. **Use Spot Instances**: Configure Karpenter to use Spot Instances for further cost optimization
 4. **Monitor and analyze costs**: Use AWS Cost Explorer to identify optimization opportunities
