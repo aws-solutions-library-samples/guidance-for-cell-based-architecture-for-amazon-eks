@@ -221,7 +221,7 @@ The EKS Cell-Based Architecture provides high availability but requires careful 
 |-----------|-------------------|
 | Fixed Costs | $721.82 |
 | Variable Costs | $63.50 - $315+ |
-| **Total Estimated Cost Range** | $785 - $1,037+ |
+| **Total Estimated Cost Range** | **$785 - $1,037+** |
 
 
 #### Cost Optimization Considerations
@@ -314,8 +314,7 @@ To request a quota increase, use the [**Service Quotas console**](https://consol
 
 ## Deployment Steps
 
-**TO DO: replace with live link to IG once it is published**
-Please refer to [Implementation Guide](https://implementationguides.kits.eventoutfitters.aws.dev/cba-eks-0603/compute/cell-based-architecture-for-amazon-eks.html) for detailed instructions to deploy **Guidance for a Cell-Based Architecture for Amazon EKS on AWS**.
+Please refer to [Implementation Guide](https://implementationguides.kits.eventoutfitters.aws.dev/cba-eks-0603/compute/cell-based-architecture-for-amazon-eks.html) for detailed instructions to deploy, run and un-deploy the **Guidance for a Cell-Based Architecture for Amazon EKS on AWS**.
 
 <br/>
 
