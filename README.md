@@ -314,7 +314,7 @@ To request a quota increase, use the [**Service Quotas console**](https://consol
 
 ## Deployment Steps
 
-Please refer to [Implementation Guide](https://implementationguides.kits.eventoutfitters.aws.dev/cba-eks-0603/compute/cell-based-architecture-for-amazon-eks.html) for detailed instructions to deploy, run and un-deploy the **Guidance for a Cell-Based Architecture for Amazon EKS on AWS**.
+Please refer to [Implementation Guide](https://aws-solutions-library-samples.github.io/compute/cell-based-architecture-for-amazon-eks.html) for detailed instructions to deploy, run and un-deploy the **Guidance for a Cell-Based Architecture for Amazon EKS on AWS**.
 
 <br/>
 
