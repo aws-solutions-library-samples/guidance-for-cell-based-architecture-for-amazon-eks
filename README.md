@@ -25,6 +25,7 @@
   - [Deployment Steps](#deployment-steps)
   - [Notices](#notices)
   - [Authors](#authors)
+  - [License](#license)
   - [Acknowledgements](#acknowledgements)
 
 <br/>
@@ -326,10 +327,15 @@ Customers are responsible for making their own independent assessment of the inf
 
 ## Authors
 
-- Raj Bagwe, Senior Solutions Architect,AWS
+- Raj Bagwe, Senior Solutions Architect, AWS
 - Ashok Srirama, Specialist Principal Solutions Architect, AWS
-- Daniel Zilberman, Senior Solutions Architect,AWS Tech Solutions
+- Daniel Zilberman, Senior Solutions Architect, AWS Tech Solutions
 
+<br/>
+
+## License
+
+This library is licensed under the MIT-0 License. See the [LICENSE](./LICENSE) file.
 <br/>
 
 ## Acknowledgements
