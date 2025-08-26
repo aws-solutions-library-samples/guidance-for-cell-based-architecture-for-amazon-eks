@@ -126,7 +126,7 @@ resource "aws_cloudformation_stack" "guidance_deployment_metrics" {
   template_body = <<STACK
     {
         "AWSTemplateFormatVersion": "2010-09-09",
-        "Description": "RB - This is Guidance for a Cell-Based Architecture for Amazon EKS on AWS (SO9303)",
+        "Description": "This is a CFN stack for Guidance for a Cell-Based Architecture for Amazon EKS on AWS (SO9303)",
         "Resources": {
             "EmptyResource": {
                 "Type": "AWS::CloudFormation::WaitConditionHandle"
